@@ -68,6 +68,8 @@ paremeters are:
   changed. The command may be one of two forms: a string or an array of
   arguments. The first form will cause the command to be executed in a bash
   shell. The second will cause it to be executed directly.
+- `prefix` - etcd key paths will be prefixed with this value for this watcher
+  only. Defaults to the global etcd prefix above.
 
 ### logging ###
 This section controls how Beacon outputs logging. Available parameters are:
