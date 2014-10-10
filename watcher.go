@@ -17,10 +17,11 @@ type Watcher struct {
 	command  []string
 	client   *Client
 	logger   *simplelog.Logger
+	prefix   string
 }
 
 // Create a new watcher.
-func NewWatcher(name string, watch, context []string, renderer *Renderer, command []string, client *Client, logger *simplelog.Logger) *Watcher {
+func NewWatcher(name string, watch, context []string, renderer *Renderer, command []string, client *Client, logger *simplelog.Logger, prefix string) *Watcher {
 	return &Watcher{
 		name,
 		watch,
@@ -29,6 +30,7 @@ func NewWatcher(name string, watch, context []string, renderer *Renderer, comman
 		command,
 		client,
 		logger,
+		prefix,
 	}
 }
 
@@ -69,7 +71,7 @@ func (watcher *Watcher) Name() string {
 
 // Execute the watcher as if an event was receieved.
 func (watcher *Watcher) Execute() error {
-	context, err := watcher.client.GetMaps(watcher.context, true)
+	context, err := watcher.client.GetMaps(watcher.context, true, watcher.prefix)
 	if err != nil {
 		watcher.logger.Error("%s failed to retrieve context: %s", watcher.Name(), err)
 		return err
@@ -128,8 +130,9 @@ func NewWatchManager(watchers []*Watcher, client *Client, logger *simplelog.Logg
 	for _, watcher := range watchers {
 		manager.Watchers[watcher.Name()] = watcher
 		for _, key := range watcher.watch {
-			if _, have := manager.listeners[key]; !have {
-				manager.listeners[key] = NewListener(watcher.client.prefix, key, client, logger)
+			listenerKey := makePrefix(watcher.prefix) + key
+			if _, have := manager.listeners[listenerKey]; !have {
+				manager.listeners[listenerKey] = NewListener(watcher.prefix, key, client, logger)
 			}
 		}
 	}
@@ -167,8 +170,9 @@ func (manager *WatchManager) Start() {
 
 	for _, watcher := range manager.Watchers {
 		for _, key := range watcher.watch {
-			if _, ok := manager.listeners[key]; ok {
-				events := addChan(key, watcher.Name())
+			listenerKey := makePrefix(watcher.prefix) + key
+			if _, ok := manager.listeners[listenerKey]; ok {
+				events := addChan(listenerKey, watcher.Name())
 				go watcher.Run(events)
 			}
 		}

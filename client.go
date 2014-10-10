@@ -57,7 +57,7 @@ func newClient(etcdClient *etcd.Client, logger *simplelog.Logger, prefix string)
 	return &Client{
 		etcdClient,
 		logger,
-		makePrefix(prefix),
+		prefix,
 	}
 }
 
@@ -76,8 +76,8 @@ func NewTLSClient(uris []string, prefix string, logger *simplelog.Logger, tlsCer
 }
 
 // Create a mapping rooted at the prefix.
-func (c *Client) nodeMapping(node *etcd.Node) map[string]interface{} {
-	path := strings.Trim(strings.TrimPrefix(node.Key, c.prefix), "/")
+func (c *Client) nodeMapping(node *etcd.Node, prefix string) map[string]interface{} {
+	path := strings.Trim(strings.TrimPrefix(node.Key, makePrefix(prefix)), "/")
 	path = strings.Replace(path, "-", "_", -1)
 	parts := strings.Split(path, "/")
 	base := parts[len(parts)-1]
@@ -95,20 +95,20 @@ func (c *Client) nodeMapping(node *etcd.Node) map[string]interface{} {
 }
 
 // Return a key as a map value.
-func (c *Client) GetMap(key string, recursive bool) (map[string]interface{}, error) {
-	key = joinPaths(c.prefix, key)
+func (c *Client) GetMap(key string, recursive bool, prefix string) (map[string]interface{}, error) {
+	key = joinPaths(makePrefix(prefix), key)
 	if response, err := c.client.Get(key, false, recursive); err == nil {
-		return c.nodeMapping(response.Node), nil
+		return c.nodeMapping(response.Node, prefix), nil
 	} else {
 		return nil, err
 	}
 }
 
 // Return a series of keys merged into a single value.
-func (c *Client) GetMaps(keys []string, recursive bool) (mapping map[string]interface{}, err error) {
+func (c *Client) GetMaps(keys []string, recursive bool, prefix string) (mapping map[string]interface{}, err error) {
 	mapping = make(map[string]interface{})
 	for _, key := range keys {
-		if nodeMapping, err := c.GetMap(key, recursive); err == nil {
+		if nodeMapping, err := c.GetMap(key, recursive, prefix); err == nil {
 			mapping = mergemap.Merge(mapping, nodeMapping)
 		} else {
 			break
